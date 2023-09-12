@@ -780,5 +780,11 @@ var (
 			Owner:           hostedGrafanaTeam,
 			RequiresRestart: true,
 		},
+		{
+			Name:        "panelTitleSearchInV1",
+			Description: "Enable searching for dashboards using panel title in search v1",
+			Stage:       FeatureStageExperimental,
+			Owner:       grafanaBackendPlatformSquad,
+		},
 	}
 )

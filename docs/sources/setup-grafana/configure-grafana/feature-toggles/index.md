@@ -139,13 +139,13 @@ Experimental features might be changed or removed without prior notice.
 | `externalCorePlugins`                       | Allow core plugins to be loaded as external                                                                  |
 | `pluginsAPIMetrics`                         | Sends metrics of public grafana packages usage by plugins                                                    |
 | `httpSLOLevels`                             | Adds SLO level to http request metrics                                                                       |
-| `panelTitleSearchInV1`                      | Enable searching for dashboards using panel title in search v1                                               |
 
 ## Development feature toggles
 
 The following toggles require explicitly setting Grafana's [app mode]({{< relref "../_index.md#app_mode" >}}) to 'development' before you can enable this feature toggle. These features tend to be experimental.
 
-| Feature toggle name   | Description                                                    |
-| --------------------- | -------------------------------------------------------------- |
-| `entityStore`         | SQL-based entity store (requires storage flag also)            |
-| `externalServiceAuth` | Starts an OAuth2 authentication provider for external services |
+| Feature toggle name    | Description                                                    |
+| ---------------------- | -------------------------------------------------------------- |
+| `entityStore`          | SQL-based entity store (requires storage flag also)            |
+| `externalServiceAuth`  | Starts an OAuth2 authentication provider for external services |
+| `panelTitleSearchInV1` | Enable searching for dashboards using panel title in search v1 |

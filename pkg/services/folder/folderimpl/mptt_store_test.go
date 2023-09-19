@@ -239,7 +239,6 @@ func TestIntegrationCreateMPTT(t *testing.T) {
 	}
 }
 
-/*
 func TestIntegrationGetHeightMPTT(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")
@@ -253,7 +252,7 @@ func TestIntegrationGetHeightMPTT(t *testing.T) {
 		{
 			desc:     "get height of ELECTRONICS",
 			uid:      "1",
-			expected: 2,
+			expected: 3,
 		},
 		{
 			desc:     "get height of TELEVISIONS",
@@ -314,4 +313,3 @@ func TestIntegrationGetHeightMPTT(t *testing.T) {
 		})
 	}
 }
-*/

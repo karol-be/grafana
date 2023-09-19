@@ -2,8 +2,12 @@ package folderimpl
 
 import (
 	"context"
+	"runtime"
+	"strings"
+	"sync/atomic"
 	"time"
 
+	"github.com/grafana/dskit/concurrency"
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/folder"
@@ -30,6 +34,7 @@ func (h *HierarchicalEntity[T]) GetEntity() T {
 */
 
 type HierarchicalStore struct {
+	sqlStore
 	db        db.DB
 	log       log.Logger
 	table     string
@@ -201,41 +206,35 @@ func (hs *HierarchicalStore) GetParents(ctx context.Context, cmd folder.GetParen
 	return folders, nil
 }
 
-func (hs *HierarchicalStore) GetChildren(ctx context.Context, cmd folder.GetChildrenQuery) ([]*folder.Folder, error) {
-	panic("not implemented")
-}
-
-/*
-func (hs *HierarchicalStore) GetHeight(ctx context.Context, foldrUID string, orgID int64, parentUID *string) (int, error) {
-	var height int
+func (hs *HierarchicalStore) GetHeight(ctx context.Context, foldrUID string, orgID int64, _ *string) (int, error) {
+	var subpaths []string
 	err := hs.db.WithDbSession(ctx, func(sess *db.Session) error {
-		if _, err := sess.SQL(`
-		SELECT MAX(COUNT(parent.uid) - (sub_tree.depth + 1))
+		// get subpaths of the leaf nodes under the given folder
+		s := `SELECT substr(group_concat(parent.uid), instr( group_concat(parent.uid), ?))
 		FROM folder AS node,
-			folder AS parent,
-			folder AS sub_parent,
-			(
-				SELECT node.uid, (COUNT(parent.uid) - 1) AS depth
-				FROM folder AS node,
-				folder AS parent
-				WHERE node.lft > parent.lft AND node.lft < parent.rgt
-				AND node.org_id = ? AND node.uid = ?
-				GROUP BY node.title
-				ORDER BY node.lft
-			)AS sub_tree
-		WHERE node.lft > parent.lft AND node.lft < parent.rgt
-			AND node.lft > sub_parent.lft AND node.lft < sub_parent.rgt
-			AND sub_parent.name = sub_tree.name
-		GROUP BY node.name
-		ORDER BY node.lft
-		`, orgID, foldrUID).Get(&height); err != nil {
+			folder AS parent
+		WHERE node.org_id = ? AND node.lft >= parent.lft AND node.lft <= parent.rgt
+		AND node.rgt = node.lft + 1
+		GROUP BY node.uid
+		HAVING instr( group_concat(parent.uid), ?) > 0
+		ORDER BY node.lft`
+		if err := sess.SQL(s, foldrUID, orgID, foldrUID).Find(&subpaths); err != nil {
 			return err
 		}
 		return nil
 	})
-	return height, err
+
+	var height uint32
+	concurrency.ForEachJob(ctx, len(subpaths), runtime.NumCPU(), func(ctx context.Context, i int) error {
+		v := len(strings.Split(subpaths[i], ",")) - 1
+		if v > int(height) {
+			atomic.StoreUint32(&height, uint32(v))
+		}
+		return nil
+	})
+
+	return int(height), err
 }
-*/
 
 func (hs *HierarchicalStore) getTree(ctx context.Context, orgID int64) ([]string, error) {
 	var tree []string

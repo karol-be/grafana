@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/infra/log"
 	"github.com/grafana/grafana/pkg/services/folder"
@@ -117,12 +116,10 @@ func (hs *HierarchicalStore) Create(ctx context.Context, cmd folder.CreateFolder
 			if cmd.ParentUID == "" {
 				maxRgt := 0
 				if _, err := sess.SQL("SELECT  MAX(rgt) FROM folder WHERE org_id = ?", cmd.OrgID).Get(&maxRgt); err != nil {
-					spew.Dump(">>>> 1", err)
 					return err
 				}
 
 				if _, err := sess.Exec("INSERT INTO folder(org_id, uid, title, created, updated, parent_uid, lft, rgt) VALUES(?, ?, ?, ?, ?, ?, ?, ?)", cmd.OrgID, cmd.UID, cmd.Title, now, now, cmd.ParentUID, maxRgt+1, maxRgt+2); err != nil {
-					spew.Dump(">>>> 3", err)
 					return err
 				}
 				return nil

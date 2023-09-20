@@ -42,7 +42,13 @@ type HierarchicalStore struct {
 }
 
 func ProvideHierarchicalStore(db db.DB) *HierarchicalStore {
-	store := &HierarchicalStore{db: db, table: "folder", parentCol: "parent_uid", log: log.New("folder-store-mptt")}
+	logger := log.New("folder-store-mptt")
+	store := &HierarchicalStore{
+		db: db, table: "folder",
+		parentCol: "parent_uid",
+		log:       logger,
+	}
+	store.sqlStore = sqlStore{db: db, log: logger}
 
 	//store.populateLeftRightCols(1, nil, 0, 0)
 	return store

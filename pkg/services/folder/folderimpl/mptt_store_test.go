@@ -239,6 +239,86 @@ func TestIntegrationCreateMPTT(t *testing.T) {
 	}
 }
 
+func TestIntegrationGetChildrenMPTT(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	sqlStore := sqlstore.InitTestDB(t)
+	folderStore := ProvideHierarchicalStore(sqlStore)
+	storeFolders(t, folderStore.db, true)
+
+	testCases := []struct {
+		desc             string
+		uid              string
+		expectedChildren []string
+	}{
+		{
+			desc:             "get children of ELECTRONICS",
+			uid:              "1",
+			expectedChildren: []string{"PORTABLE ELECTRONICS", "TELEVISIONS"},
+		},
+		{
+			desc:             "get children of TELEVISIONS",
+			uid:              "2",
+			expectedChildren: []string{"LCD", "PLASMA", "TUBE"},
+		},
+		{
+			desc:             "get children of TUBE",
+			uid:              "3",
+			expectedChildren: []string{},
+		},
+		{
+			desc:             "get children of LCD",
+			uid:              "4",
+			expectedChildren: []string{},
+		},
+		{
+			desc:             "get children of PLASMA",
+			uid:              "5",
+			expectedChildren: []string{},
+		},
+		{
+			desc:             "get children of PORTABLE ELECTRONICS",
+			uid:              "6",
+			expectedChildren: []string{"2 WAY RADIOS", "CD PLAYERS", "MP3 PLAYERS"},
+		},
+		{
+			desc:             "get children of MP3 PLAYERS",
+			uid:              "7",
+			expectedChildren: []string{"FLASH"},
+		},
+		{
+			desc:             "get children of FLASH",
+			uid:              "8",
+			expectedChildren: []string{},
+		},
+		{
+			desc:             "get children of CD PLAYERS",
+			uid:              "9",
+			expectedChildren: []string{},
+		},
+		{
+			desc:             "get children of 2 WAY RADIOS",
+			uid:              "10",
+			expectedChildren: []string{},
+		},
+	}
+
+	for _, tc := range testCases {
+		children, err := folderStore.GetChildren(context.Background(), folder.GetChildrenQuery{
+			OrgID: 1,
+			UID:   tc.uid,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, len(tc.expectedChildren), len(children))
+		for i := 0; i < len(children); i++ {
+			assert.Equal(t, tc.expectedChildren[i], children[i].Title)
+		}
+	}
+}
+
 func TestIntegrationGetHeightMPTT(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test")

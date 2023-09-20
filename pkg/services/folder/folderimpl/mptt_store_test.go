@@ -393,3 +393,164 @@ func TestIntegrationGetHeightMPTT(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegrationDeleteMPTT(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := []struct {
+		desc         string
+		UID          string
+		expectedTree []string
+	}{
+		{
+			desc:         "delete folder under root",
+			UID:          "1",
+			expectedTree: nil,
+		},
+		{
+			desc: "delete TELEVISIONS",
+			UID:  "2",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete TUBE",
+			UID:  "3",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete LCD",
+			UID:  "4",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete PLASMA",
+			UID:  "5",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete PORTABLE ELECTRONICS",
+			UID:  "6",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+			},
+		},
+		{
+			desc: "delete MP3 PLAYERS",
+			UID:  "7",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete FLASH",
+			UID:  "8",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete CD PLAYERS",
+			UID:  "9",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc: "delete 2 WAY RADIOS",
+			UID:  "10",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			sqlStore := sqlstore.InitTestDB(t)
+			folderStore := ProvideHierarchicalStore(sqlStore)
+			storeFolders(t, folderStore.db, true)
+
+			err := folderStore.Delete(context.Background(), tc.UID, 1)
+			require.NoError(t, err)
+
+			tree, err := folderStore.getTree(context.Background(), 1)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectedTree, tree)
+		})
+	}
+}

@@ -180,8 +180,39 @@ func (hs *hierarchicalStore) Create(ctx context.Context, cmd folder.CreateFolder
 }
 
 func (hs *hierarchicalStore) Delete(ctx context.Context, uid string, orgID int64) error {
-func (hs *HierarchicalStore) Delete(ctx context.Context, uid string, orgID int64) error {
-	panic("not implemented")
+	if err := hs.db.InTransaction(ctx, func(ctx context.Context) error {
+		if err := hs.db.WithDbSession(ctx, func(sess *db.Session) error {
+			type res struct {
+				Lft   int64
+				Rgt   int64
+				Width int64
+			}
+			var r res
+			if _, err := sess.SQL("SELECT lft, rgt, rgt - lft + 1 AS width FROM folder WHERE uid = ? AND org_id = ?", uid, orgID).Get(&r); err != nil {
+				return err
+			}
+
+			if _, err := sess.Exec("DELETE FROM folder WHERE lft >= ? AND rgt <= ? AND org_id = ?", r.Lft, r.Rgt, orgID); err != nil {
+				return err
+			}
+
+			if _, err := sess.Exec("UPDATE folder SET rgt = rgt - ? WHERE rgt > ? AND org_id = ?", r.Width, r.Width, r.Rgt, orgID); err != nil {
+				return err
+			}
+
+			if _, err := sess.Exec("UPDATE folder SET lft = lft - ? WHERE lft > ? AND org_id = ?", r.Width, r.Width, r.Rgt, orgID); err != nil {
+				return err
+			}
+
+			return nil
+		}); err != nil {
+			return err
+		}
+		return nil
+	}); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (hs *hierarchicalStore) Update(ctx context.Context, cmd folder.UpdateFolderCommand) (*folder.Folder, error) {

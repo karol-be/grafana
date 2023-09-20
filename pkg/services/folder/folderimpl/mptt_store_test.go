@@ -9,6 +9,7 @@ import (
 	"github.com/grafana/grafana/pkg/infra/db"
 	"github.com/grafana/grafana/pkg/services/folder"
 	"github.com/grafana/grafana/pkg/services/sqlstore"
+	"github.com/grafana/grafana/pkg/util"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -391,6 +392,50 @@ func TestIntegrationGetHeightMPTT(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.expected, height)
 		})
+	}
+}
+
+func TestIntegrationUpdateMPTT(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	sqlStore := sqlstore.InitTestDB(t)
+	folderStore := ProvideHierarchicalStore(sqlStore)
+	storeFolders(t, folderStore.db, true)
+
+	testCases := []struct {
+		desc  string
+		UID   *string
+		ID    *int64
+		Title *string
+	}{
+		{
+			desc: "get by uid",
+			UID:  util.Pointer("8"),
+		},
+		{
+			desc: "get by id",
+			ID:   util.Pointer(int64(8)),
+		},
+		{
+			desc:  "get by title",
+			Title: util.Pointer("FLASH"),
+		},
+	}
+
+	for _, tc := range testCases {
+		f, err := folderStore.Get(context.Background(), folder.GetFolderQuery{
+			OrgID: 1,
+			UID:   tc.UID,
+			ID:    tc.ID,
+			Title: tc.Title,
+		})
+		require.NoError(t, err)
+
+		assert.Equal(t, "FLASH", f.Title)
+		assert.Equal(t, "8", f.UID)
+		assert.Equal(t, int64(8), f.ID)
 	}
 }
 

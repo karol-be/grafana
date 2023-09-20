@@ -179,6 +179,7 @@ func (hs *hierarchicalStore) Create(ctx context.Context, cmd folder.CreateFolder
 	return foldr, nil
 }
 
+// Delete deletes a folder and all its descendants
 func (hs *hierarchicalStore) Delete(ctx context.Context, uid string, orgID int64) error {
 	if err := hs.db.InTransaction(ctx, func(ctx context.Context) error {
 		if err := hs.db.WithDbSession(ctx, func(sess *db.Session) error {

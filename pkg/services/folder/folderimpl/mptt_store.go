@@ -179,11 +179,12 @@ func (hs *hierarchicalStore) Create(ctx context.Context, cmd folder.CreateFolder
 	return foldr, nil
 }
 
+func (hs *hierarchicalStore) Delete(ctx context.Context, uid string, orgID int64) error {
 func (hs *HierarchicalStore) Delete(ctx context.Context, uid string, orgID int64) error {
 	panic("not implemented")
 }
 
-func (hs *HierarchicalStore) Update(ctx context.Context, cmd folder.UpdateFolderCommand) (*folder.Folder, error) {
+func (hs *hierarchicalStore) Update(ctx context.Context, cmd folder.UpdateFolderCommand) (*folder.Folder, error) {
 	panic("not implemented")
 }
 

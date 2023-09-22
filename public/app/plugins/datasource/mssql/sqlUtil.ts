@@ -90,6 +90,13 @@ export function toRawSql({ sql, dataset, table }: SQLQuery): string {
   rawQuery += createSelectClause(sql.columns, sql.limit);
 
   if (dataset && table) {
+    let charactersThatNeedEscaping = "-";
+    if(dataset.contains(charactersThatNeedEscaping)){
+      dataset = `[${dataset}]`
+    }
+    if(table.contains(charactersThatNeedEscaping)){
+      table = `[${table}]`
+    }
     rawQuery += `FROM ${dataset}.${table} `;
   }
 

@@ -217,7 +217,100 @@ func (hs *hierarchicalStore) Delete(ctx context.Context, uid string, orgID int64
 }
 
 func (hs *hierarchicalStore) Update(ctx context.Context, cmd folder.UpdateFolderCommand) (*folder.Folder, error) {
-	panic("not implemented")
+	var foldr *folder.Folder
+	var err error
+	if err := hs.db.InTransaction(ctx, func(ctx context.Context) error {
+		if foldr, err = hs.sqlStore.Update(ctx, cmd); err != nil {
+			return err
+		}
+
+		// if it's a move operation update the left and right columns of the affected nodes appropriately
+		if cmd.NewParentUID != nil {
+			if err := hs.db.WithDbSession(ctx, func(sess *db.Session) error {
+				if *cmd.NewParentUID == "" {
+					return nil
+				}
+
+				type res struct {
+					UID   string `xorm:"uid"`
+					Title string
+					Lft   int64
+					Rgt   int64
+				}
+				var r []res
+				if err := sess.SQL("SELECT uid, title, lft, rgt FROM folder WHERE org_id = ?", cmd.OrgID).Find(&r); err != nil {
+					return err
+				}
+
+				var nodeLft, nodeRgt, newParentRgt, newLft, newRgt int64
+				for _, v := range r {
+					if v.UID == cmd.UID {
+						nodeLft = v.Lft
+						nodeRgt = v.Rgt
+					} else if v.UID == *cmd.NewParentUID {
+						newParentRgt = v.Rgt
+					}
+				}
+
+				width := nodeRgt - nodeLft + 1
+				shift := newParentRgt - 1 - nodeRgt
+
+				toUpdate := make([]res, 0, len(r))
+				for _, v := range r {
+					isDescendant := v.Lft > nodeLft && v.Rgt < nodeRgt
+
+					if v.UID == cmd.UID || isDescendant {
+						newLft = v.Lft + shift
+						newRgt = v.Rgt + shift
+						toUpdate = append(toUpdate, res{UID: v.UID, Lft: newLft, Rgt: newRgt})
+						continue
+					}
+
+					newLft = v.Lft
+					newRgt = v.Rgt
+
+					// if the node is on the right of the moved node, shift it to the left
+					if newLft > nodeRgt {
+						newLft -= width
+						//spew.Dump(">>> 1", v.Title, v.Lft, newLft)
+					}
+					if newRgt > nodeRgt {
+						newRgt -= width
+						//spew.Dump(">>> 2", v.Title, v.Rgt, newRgt)
+					}
+
+					// if the node is on the right of the new parent, shift it to the right
+					if newLft > newParentRgt-width {
+						newLft += width
+						//spew.Dump(">>> 3", v.Title, v.Lft, newLft)
+					}
+
+					if newRgt >= newParentRgt-width {
+						newRgt += width
+						//spew.Dump(">>> 4", v.Title, v.Rgt, newRgt)
+					}
+					if newLft != v.Lft || newRgt != v.Rgt {
+						toUpdate = append(toUpdate, res{UID: v.UID, Lft: newLft, Rgt: newRgt})
+					}
+				}
+
+				for _, v := range toUpdate {
+					if _, err := sess.Exec("UPDATE folder SET lft = ?, rgt = ? WHERE uid = ? AND org_id = ?", v.Lft, v.Rgt, v.UID, cmd.OrgID); err != nil {
+						return err
+					}
+				}
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return foldr, err
+	}
+
+	// NOTE: left and right cols are not updated in the foldr object
+	return foldr, nil
 }
 
 func (hs *HierarchicalStore) Get(ctx context.Context, cmd folder.GetFolderQuery) (*folder.Folder, error) {

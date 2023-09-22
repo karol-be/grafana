@@ -436,6 +436,8 @@ func TestIntegrationUpdateMPTT(t *testing.T) {
 		assert.Equal(t, "FLASH", f.Title)
 		assert.Equal(t, "8", f.UID)
 		assert.Equal(t, int64(8), f.ID)
+		//assert.NotEmpty(t, f.FullPathUIDs)
+		//assert.NotEmpty(t, f.FullPath)
 	}
 }
 
@@ -592,6 +594,158 @@ func TestIntegrationDeleteMPTT(t *testing.T) {
 			err := folderStore.Delete(context.Background(), tc.UID, 1)
 			require.NoError(t, err)
 
+			tree, err := folderStore.getTree(context.Background(), 1)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectedTree, tree)
+		})
+	}
+}
+
+func TestIntegrationMoveMPTT(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping integration test")
+	}
+
+	testCases := []struct {
+		desc         string
+		UID          string
+		newParentUID string
+		expectedTree []string
+	}{
+		{
+			desc:         "move TELEVISIONS under FLASH",
+			UID:          "2",
+			newParentUID: "8",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"5-TELEVISIONS",
+				"6-TUBE",
+				"6-LCD",
+				"6-PLASMA",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc:         "move TELEVISIONS under MP3 PLAYERS",
+			UID:          "2",
+			newParentUID: "7",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-TELEVISIONS",
+				"5-TUBE",
+				"5-LCD",
+				"5-PLASMA",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc:         "move TELEVISIONS under CD PLAYERS",
+			UID:          "2",
+			newParentUID: "9",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"3-CD PLAYERS",
+				"4-TELEVISIONS",
+				"5-TUBE",
+				"5-LCD",
+				"5-PLASMA",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc:         "move TUBE under MP3 PLAYERS",
+			UID:          "3",
+			newParentUID: "7",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"4-TUBE",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc:         "move TUBE under FLASH",
+			UID:          "3",
+			newParentUID: "8",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-LCD",
+				"3-PLASMA",
+				"2-PORTABLE ELECTRONICS",
+				"3-MP3 PLAYERS",
+				"4-FLASH",
+				"5-TUBE",
+				"3-CD PLAYERS",
+				"3-2 WAY RADIOS",
+			},
+		},
+		{
+			desc:         "move PORTABLE ELECTRONICS under TUBE",
+			UID:          "6",
+			newParentUID: "3",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"3-TUBE",
+				"4-PORTABLE ELECTRONICS",
+				"5-MP3 PLAYERS",
+				"6-FLASH",
+				"5-CD PLAYERS",
+				"5-2 WAY RADIOS",
+				"3-LCD",
+				"3-PLASMA",
+			},
+		},
+		{
+			desc:         "move PORTABLE ELECTRONICS under TELEVISIONS",
+			UID:          "6",
+			newParentUID: "2",
+			expectedTree: []string{
+				"1-ELECTRONICS",
+				"2-TELEVISIONS",
+				"4-PORTABLE ELECTRONICS",
+				"5-MP3 PLAYERS",
+				"6-FLASH",
+				"5-CD PLAYERS",
+				"5-2 WAY RADIOS",
+				"3-TUBE",
+				"3-LCD",
+				"3-PLASMA",
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.desc, func(t *testing.T) {
+			sqlStore := sqlstore.InitTestDB(t)
+			folderStore := ProvideHierarchicalStore(sqlStore)
+			storeFolders(t, folderStore.db, true)
+
+			_, err := folderStore.Update(context.Background(), folder.UpdateFolderCommand{
+				OrgID:        1,
+				UID:          tc.UID,
+				NewParentUID: &tc.newParentUID,
+			})
+			require.NoError(t, err)
 			tree, err := folderStore.getTree(context.Background(), 1)
 			require.NoError(t, err)
 
